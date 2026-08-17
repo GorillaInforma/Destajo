@@ -1,24 +1,29 @@
-app = "destajo-calzado"
-primary_region = "mia"   # Miami, más cercano a México
+# fly.toml app configuration file generated for destajo on 2026-08-17T06:35:57Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'destajo'
+primary_region = 'lax'
 
 [build]
 
 [env]
-  DATABASE_URL = "sqlite:/data/destajo.db"
+  DATABASE_URL = 'sqlite:/data/destajo.db'
+
+[[mounts]]
+  source = 'destajo_data'
+  destination = '/data'
 
 [http_service]
   internal_port = 3000
   force_https = true
-  auto_stop_machines = true
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
 
 [[vm]]
-  memory = "256mb"
-  cpu_kind = "shared"
+  memory = '256mb'
+  cpu_kind = 'shared'
   cpus = 1
-
-# Volumen persistente para SQLite
-[mounts]
-  source = "destajo_data"
-  destination = "/data"
+  memory_mb = 256
