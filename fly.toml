@@ -1,5 +1,5 @@
-app = "destajo-calzado"
-primary_region = "mia"   # Miami, más cercano a México
+app = "destajo"
+primary_region = "ams"
 
 [build]
 
@@ -18,7 +18,6 @@ primary_region = "mia"   # Miami, más cercano a México
   cpu_kind = "shared"
   cpus = 1
 
-# Volumen persistente para SQLite
 [mounts]
-  source = "destajo_data"
+  source = "datos_de_destajo"
   destination = "/data"
