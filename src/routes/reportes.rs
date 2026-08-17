@@ -26,76 +26,59 @@ pub struct FiltroDia {
     pub fecha: String,
 }
 
-// GET /reportes/quincena?desde=2026-08-01&hasta=2026-08-15
+#[derive(sqlx::FromRow)]
+struct FilaReporte {
+    trabajador_id: String,
+    nombre: String,
+    total_piezas: i64,
+    total_pago: f64,
+}
+
 async fn reporte_quincena(
     State(state): State<Arc<AppState>>,
     Query(rango): Query<RangoFecha>,
 ) -> Result<Json<Vec<ResumenTrabajador>>, AppError> {
-    // Traemos registros en el rango con nombre del trabajador
-    let rows = sqlx::query!(
-        r#"
-        SELECT
-            t.id   AS trabajador_id,
-            t.nombre,
-            SUM(r.cantidad) AS total_piezas,
-            SUM(CAST(r.total AS REAL)) AS total_pago
-        FROM registros r
-        JOIN trabajadores t ON t.id = r.trabajador_id
-        WHERE r.fecha BETWEEN ? AND ?
-        GROUP BY t.id, t.nombre
-        ORDER BY t.nombre
-        "#,
-        rango.desde,
-        rango.hasta
+    let rows = sqlx::query_as::<_, FilaReporte>(
+        "SELECT t.id AS trabajador_id, t.nombre,
+         COALESCE(SUM(r.cantidad), 0) AS total_piezas,
+         COALESCE(SUM(CAST(r.total AS REAL)), 0.0) AS total_pago
+         FROM trabajadores t
+         LEFT JOIN registros r ON r.trabajador_id = t.id AND r.fecha BETWEEN ? AND ?
+         GROUP BY t.id, t.nombre ORDER BY t.nombre"
     )
+    .bind(&rango.desde)
+    .bind(&rango.hasta)
     .fetch_all(&state.db)
     .await?;
 
-    let resumen: Vec<ResumenTrabajador> = rows
-        .into_iter()
-        .map(|row| ResumenTrabajador {
-            trabajador_id: row.trabajador_id,
-            nombre: row.nombre,
-            total_piezas: row.total_piezas.unwrap_or(0),
-            total_pago: format!("{:.2}", row.total_pago.unwrap_or(0.0)),
-        })
-        .collect();
-
-    Ok(Json(resumen))
+    Ok(Json(rows.into_iter().map(|r| ResumenTrabajador {
+        trabajador_id: r.trabajador_id,
+        nombre: r.nombre,
+        total_piezas: r.total_piezas,
+        total_pago: format!("{:.2}", r.total_pago),
+    }).collect()))
 }
 
-// GET /reportes/dia?fecha=2026-08-16
 async fn reporte_dia(
     State(state): State<Arc<AppState>>,
     Query(filtro): Query<FiltroDia>,
 ) -> Result<Json<Vec<ResumenTrabajador>>, AppError> {
-    let rows = sqlx::query!(
-        r#"
-        SELECT
-            t.id   AS trabajador_id,
-            t.nombre,
-            SUM(r.cantidad) AS total_piezas,
-            SUM(CAST(r.total AS REAL)) AS total_pago
-        FROM registros r
-        JOIN trabajadores t ON t.id = r.trabajador_id
-        WHERE r.fecha = ?
-        GROUP BY t.id, t.nombre
-        ORDER BY t.nombre
-        "#,
-        filtro.fecha
+    let rows = sqlx::query_as::<_, FilaReporte>(
+        "SELECT t.id AS trabajador_id, t.nombre,
+         COALESCE(SUM(r.cantidad), 0) AS total_piezas,
+         COALESCE(SUM(CAST(r.total AS REAL)), 0.0) AS total_pago
+         FROM trabajadores t
+         LEFT JOIN registros r ON r.trabajador_id = t.id AND r.fecha = ?
+         GROUP BY t.id, t.nombre ORDER BY t.nombre"
     )
+    .bind(&filtro.fecha)
     .fetch_all(&state.db)
     .await?;
 
-    let resumen: Vec<ResumenTrabajador> = rows
-        .into_iter()
-        .map(|row| ResumenTrabajador {
-            trabajador_id: row.trabajador_id,
-            nombre: row.nombre,
-            total_piezas: row.total_piezas.unwrap_or(0),
-            total_pago: format!("{:.2}", row.total_pago.unwrap_or(0.0)),
-        })
-        .collect();
-
-    Ok(Json(resumen))
+    Ok(Json(rows.into_iter().map(|r| ResumenTrabajador {
+        trabajador_id: r.trabajador_id,
+        nombre: r.nombre,
+        total_piezas: r.total_piezas,
+        total_pago: format!("{:.2}", r.total_pago),
+    }).collect()))
 }
